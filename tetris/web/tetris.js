@@ -35,6 +35,8 @@ const FALL_SPEED = 0.5;      // seconds between each automatic step downward
 const BLACK = "rgb(0, 0, 0)";
 const GREY = "rgb(40, 40, 40)";
 const WHITE = "rgb(255, 255, 255)";
+const PLAY_BG = "rgb(30, 30, 36)";   // the playfield's grey background, so the
+                                     // play area stands apart from the sidebar
 
 // Work out the window size from the settings above.
 const PLAY_WIDTH = COLUMNS * CELL_SIZE;
@@ -251,8 +253,13 @@ function main() {
     }
 
     // ----- 3. DRAW EVERYTHING -----
+    // Fill the whole canvas black first (this is the sidebar's colour)...
     ctx.fillStyle = BLACK;
     ctx.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+    // ...then paint the play area grey so it clearly stands apart from the
+    // score sidebar on its right.
+    ctx.fillStyle = PLAY_BG;
+    ctx.fillRect(0, 0, PLAY_WIDTH, WINDOW_HEIGHT);
     drawGridLines(ctx);
     drawBoard(ctx, board);
     if (!gameOver) {

@@ -42,6 +42,8 @@ FALL_SPEED = 0.5        # seconds between each automatic step downward
 BLACK = (0, 0, 0)
 GREY = (40, 40, 40)
 WHITE = (255, 255, 255)
+PLAY_BG = (30, 30, 36)   # the playfield's grey background, so the play area
+                         # stands apart from the score sidebar
 
 # Work out the window size from the settings above.
 PLAY_WIDTH = COLUMNS * CELL_SIZE
@@ -228,7 +230,10 @@ def main():
                         game_over = True
 
         # ----- 3. DRAW EVERYTHING -----
+        # Fill everything black (the sidebar's colour), then paint the play
+        # area grey so it clearly stands apart from the score sidebar.
         screen.fill(BLACK)
+        pygame.draw.rect(screen, PLAY_BG, (0, 0, PLAY_WIDTH, WINDOW_HEIGHT))
         draw_grid_lines(screen)
         draw_board(screen, board)
         if not game_over:
