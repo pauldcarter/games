@@ -142,14 +142,13 @@
   <h1>Tetris</h1>
   <p class="hint">← → move &nbsp;·&nbsp; ↑ rotate &nbsp;·&nbsp; ↓ soft drop &nbsp;·&nbsp; Space hard drop</p>
 
-  <!-- LEFT thumb pad: move left / right on top, soft-drop underneath. Direct
-       body child so it sits to the board's left in the landscape row layout. -->
+  <!-- LEFT thumb pad: move left / right. Direct body child so it sits to the
+       board's left in the landscape row layout. -->
   <div class="pad" id="pad-left">
     <div class="pad-row">
       <button class="btn" id="btn-left" aria-label="Move left">◀</button>
       <button class="btn" id="btn-right" aria-label="Move right">▶</button>
     </div>
-    <button class="btn btn-wide" id="btn-down" aria-label="Soft drop">▼</button>
   </div>
 
   <canvas id="game"></canvas>
