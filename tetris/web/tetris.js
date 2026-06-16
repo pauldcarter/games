@@ -293,6 +293,13 @@ function main() {
     drawText(ctx, "SCORE", PLAY_WIDTH + 20, 20);
     drawText(ctx, String(score), PLAY_WIDTH + 20, 50);
 
+    // The "level" is just how many times we've sped up so far, plus one (so
+    // you start on level 1). It goes up every SPEED_UP_EVERY pieces -- the
+    // same moment the game gets a little faster.
+    const level = Math.floor(piecesLocked / SPEED_UP_EVERY) + 1;
+    drawText(ctx, "LEVEL", PLAY_WIDTH + 20, 100);
+    drawText(ctx, String(level), PLAY_WIDTH + 20, 130);
+
     if (gameOver) {
       drawText(ctx, "GAME", PLAY_WIDTH + 20, 200);
       drawText(ctx, "OVER", PLAY_WIDTH + 20, 230);

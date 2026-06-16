@@ -264,6 +264,13 @@ def main():
         draw_text(screen, font, "SCORE", PLAY_WIDTH + 20, 20)
         draw_text(screen, font, str(score), PLAY_WIDTH + 20, 50)
 
+        # The "level" is just how many times we've sped up so far, plus one (so
+        # you start on level 1). It goes up every SPEED_UP_EVERY pieces -- the
+        # same moment the game gets a little faster.
+        level = pieces_locked // SPEED_UP_EVERY + 1
+        draw_text(screen, font, "LEVEL", PLAY_WIDTH + 20, 100)
+        draw_text(screen, font, str(level), PLAY_WIDTH + 20, 130)
+
         if game_over:
             draw_text(screen, font, "GAME", PLAY_WIDTH + 20, 200)
             draw_text(screen, font, "OVER", PLAY_WIDTH + 20, 230)
