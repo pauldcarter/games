@@ -111,9 +111,19 @@
         box-sizing: border-box;
       }
       /* Reveal both thumb pads and give them the SAME fixed width so the board
-         sits dead-centre between them. */
-      .pad { display: flex; width: 180px; flex: 0 0 180px; }
+         sits dead-centre between them. Make them full-height so we can place
+         buttons at the middle and the bottom. */
+      .pad { display: flex; width: 180px; flex: 0 0 180px; height: 100%; position: relative; }
       canvas { height: 100%; width: auto; }  /* board fills the height */
+      /* The rotate buttons stay centred (the pad's justify-content: center does
+         that, since DROP is taken out of the flow below); DROP is pinned to the
+         very bottom of the right column. */
+      #btn-drop {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
       #btn-fullscreen { display: flex; }     /* offer the fullscreen toggle */
     }
 
@@ -153,8 +163,8 @@
 
   <canvas id="game"></canvas>
 
-  <!-- RIGHT thumb pad: rotate anticlockwise / clockwise on top, hard drop
-       underneath -- mirroring the left pad so the two are balanced. -->
+  <!-- RIGHT thumb pad: the two rotate buttons sit in the middle (next to the
+       board); DROP is pushed to the very bottom of the column. -->
   <div class="pad" id="pad-right">
     <div class="pad-row">
       <button class="btn" id="btn-rotate-ccw" aria-label="Rotate left">↺</button>
