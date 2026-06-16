@@ -66,6 +66,31 @@
     .btn:active { background: rgba(76, 194, 255, 0.4); }
     .btn-wide { width: 112px; font-size: 1rem; }
 
+    /* A little fullscreen toggle, tucked in the top-right corner. Tapping it
+       makes the game take the whole screen (hiding the browser's URL bar) on
+       phones that support it. Hidden by default; revealed on touch landscape,
+       and removed entirely by JS on phones that can't go fullscreen (iPhone). */
+    #btn-fullscreen {
+      display: none;
+      position: fixed;
+      top: 6px;
+      right: 6px;
+      z-index: 10;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid #4cc2ff;
+      background: rgba(76, 194, 255, 0.12);
+      color: #f0f2f8;
+      font-size: 1.1rem;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     /* Shown only on a phone held in portrait (set up by the media query). */
     #rotate-hint { display: none; }
 
@@ -77,12 +102,15 @@
         flex-direction: row;
         justify-content: center;
         gap: 16px;
-        height: 100vh;
+        height: 100vh;       /* fallback for old browsers */
+        height: 100dvh;      /* the *visible* height -- grows as the URL bar
+                                collapses, so the game fills the real screen */
         padding: 8px;
         box-sizing: border-box;
       }
       .pad { display: flex; }                /* reveal both thumb pads */
       canvas { height: 100%; width: auto; }  /* board fills the height */
+      #btn-fullscreen { display: flex; }     /* offer the fullscreen toggle */
     }
 
     /* On a touch phone in PORTRAIT: ask the player to turn sideways rather than
@@ -96,6 +124,7 @@
         justify-content: center;
         gap: 1rem;
         height: 100vh;
+        height: 100dvh;
         text-align: center;
         font-size: 1.3rem;
         padding: 2rem;
@@ -129,11 +158,41 @@
 
   <a class="back" href="../../index.html">← Back to games</a>
 
+  <!-- Tap to fill the screen (hides the browser's URL bar) where supported. -->
+  <button id="btn-fullscreen" aria-label="Toggle fullscreen">⛶</button>
+
   <!-- Shown only on a phone held in portrait. -->
   <div id="rotate-hint">
     <div class="spin">🔄</div>
     <div>Turn your phone sideways to play Tetris</div>
   </div>
+
+  <script>
+    // Wire up the fullscreen toggle. Tapping it asks the browser to make the
+    // page fill the whole screen (which hides the URL bar); tapping again
+    // leaves fullscreen. Some phones -- notably iPhones -- don't allow web
+    // pages to go fullscreen, so if it isn't supported we just remove the
+    // button rather than show one that does nothing.
+    (function () {
+      var btn = document.getElementById("btn-fullscreen");
+      var el = document.documentElement;
+      var canFullscreen = !!(el.requestFullscreen || el.webkitRequestFullscreen);
+
+      if (!canFullscreen) {
+        btn.remove();
+        return;
+      }
+
+      btn.addEventListener("pointerup", function (event) {
+        event.preventDefault();
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+        } else {
+          (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+        }
+      });
+    })();
+  </script>
 
   <!-- Load the game files in order, smallest first, just like the Python
        imports at the top of tetris.py. tetris.js uses the others, so it

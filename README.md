@@ -50,7 +50,9 @@ published site). Keyboard controls:
 
 **On a phone:** turn it sideways (landscape) and an on-screen gamepad appears —
 a D-pad on the left and ROTATE / DROP buttons on the right, like a game
-controller. Held in portrait, it asks you to rotate the phone.
+controller. Held in portrait, it asks you to rotate the phone. Tap the ⛶ button
+(top-right) to go fullscreen and hide the browser's address bar, where the phone
+supports it.
 
 ### Run the Python version on a computer
 
