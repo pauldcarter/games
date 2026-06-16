@@ -59,3 +59,60 @@ function takeMoves() {
   _moveQueue.length = 0;              // empty the queue for next frame
   return moves;
 }
+
+
+// How often a held direction button repeats, in milliseconds. This matches the
+// Python version's STICK_REPEAT, so holding ◀ on the phone feels like holding a
+// direction on the PS3 controller.
+const TOUCH_REPEAT = 120;
+
+
+function setupTouchControls() {
+  // Wire up the on-screen buttons for phones. Each button has an id and the
+  // move it stands for; we look them up and make taps add that move to the same
+  // queue the keyboard uses, so the game itself doesn't care how you pressed it.
+  //
+  // This mirrors the PS3 controller layout from controls.py: the D-pad
+  // (left/right/down) is something you HOLD, so those buttons repeat while held;
+  // rotate and hard-drop fire once per press, like the face buttons.
+  const buttons = [
+    { id: "btn-left",   move: "left",   hold: true },
+    { id: "btn-right",  move: "right",  hold: true },
+    { id: "btn-down",   move: "down",   hold: true },
+    { id: "btn-rotate", move: "rotate", hold: false },
+    { id: "btn-drop",   move: "drop",   hold: false },
+  ];
+
+  for (const { id, move, hold } of buttons) {
+    const el = document.getElementById(id);
+    if (!el) {
+      continue;  // the button isn't on the page (e.g. on desktop) -- skip it
+    }
+
+    let repeatTimer = null;
+
+    const press = (event) => {
+      // Stop the tap from also scrolling, zooming, or selecting text.
+      event.preventDefault();
+      _moveQueue.push(move);  // the move happens immediately on press
+
+      if (hold) {
+        // ...and then keeps happening while the finger stays down.
+        repeatTimer = setInterval(() => _moveQueue.push(move), TOUCH_REPEAT);
+      }
+    };
+
+    const release = () => {
+      if (repeatTimer !== null) {
+        clearInterval(repeatTimer);
+        repeatTimer = null;
+      }
+    };
+
+    // Pointer events cover both touch and mouse with one set of handlers.
+    el.addEventListener("pointerdown", press);
+    el.addEventListener("pointerup", release);
+    el.addEventListener("pointercancel", release);
+    el.addEventListener("pointerleave", release);  // finger slid off the button
+  }
+}

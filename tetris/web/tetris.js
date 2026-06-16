@@ -150,7 +150,8 @@ function main() {
   canvas.height = WINDOW_HEIGHT;
   const ctx = canvas.getContext("2d");
 
-  setupControls();
+  setupControls();        // keyboard (desktop)
+  setupTouchControls();   // on-screen buttons (phones)
 
   // --- Set up a fresh game ---
   let board = makeEmptyBoard(COLUMNS, ROWS);

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <title>Tetris</title>
   <style>
     body {
@@ -27,6 +27,81 @@
       box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0, 0, 0, 0.5);
       /* Crisp blocks, no blurry scaling. */
       image-rendering: pixelated;
+      /* Never let the board overflow -- it scales down to fit. The canvas keeps
+         its own internal pixel resolution; only the displayed size changes, so
+         the blocks stay sharp. */
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    /* ---- The on-screen gamepad ----
+       Two thumb clusters that flank the board, mirroring a PS3 pad: directions
+       on the LEFT, action buttons (rotate/drop) on the RIGHT. Hidden by default
+       (desktop); only shown on a touch phone in landscape, further down. */
+    .pad {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+      justify-content: center;
+    }
+    .pad-row { display: flex; gap: 14px; }
+    .btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 14px;
+      border: 2px solid #4cc2ff;
+      background: rgba(76, 194, 255, 0.15);
+      color: #f0f2f8;
+      font-size: 1.6rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;       /* taps drive the game, never scroll/zoom */
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { background: rgba(76, 194, 255, 0.4); }
+    .btn-wide { width: 112px; font-size: 1rem; }
+
+    /* Shown only on a phone held in portrait (set up by the media query). */
+    #rotate-hint { display: none; }
+
+    /* On a touch phone in LANDSCAPE: lay the page out as one row,
+       [ D-pad ] [ board ] [ actions ], sized to the screen height. */
+    @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+      h1, .hint, a.back { display: none; }   /* free up space for the game */
+      body {
+        flex-direction: row;
+        justify-content: center;
+        gap: 16px;
+        height: 100vh;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      .pad { display: flex; }                /* reveal both thumb pads */
+      canvas { height: 100%; width: auto; }  /* board fills the height */
+    }
+
+    /* On a touch phone in PORTRAIT: ask the player to turn sideways rather than
+       cram the landscape gamepad into a tall, narrow screen. */
+    @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+      h1, .hint, a.back, canvas, .pad { display: none; }
+      #rotate-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        height: 100vh;
+        text-align: center;
+        font-size: 1.3rem;
+        padding: 2rem;
+        box-sizing: border-box;
+      }
+      #rotate-hint .spin { font-size: 3rem; }
     }
   </style>
 </head>
@@ -34,9 +109,31 @@
   <h1>Tetris</h1>
   <p class="hint">← → move &nbsp;·&nbsp; ↑ rotate &nbsp;·&nbsp; ↓ soft drop &nbsp;·&nbsp; Space hard drop</p>
 
+  <!-- LEFT thumb pad: directions (the "D-pad"). Direct body child so it sits to
+       the board's left when the landscape layout turns body into a row. -->
+  <div class="pad" id="pad-left">
+    <div class="pad-row">
+      <button class="btn" id="btn-left" aria-label="Move left">◀</button>
+      <button class="btn" id="btn-down" aria-label="Soft drop">▼</button>
+      <button class="btn" id="btn-right" aria-label="Move right">▶</button>
+    </div>
+  </div>
+
   <canvas id="game"></canvas>
 
+  <!-- RIGHT thumb pad: actions (rotate + hard drop), like the PS3 face buttons. -->
+  <div class="pad" id="pad-right">
+    <button class="btn btn-wide" id="btn-rotate" aria-label="Rotate">ROTATE</button>
+    <button class="btn btn-wide" id="btn-drop" aria-label="Hard drop">DROP</button>
+  </div>
+
   <a class="back" href="../../index.html">← Back to games</a>
+
+  <!-- Shown only on a phone held in portrait. -->
+  <div id="rotate-hint">
+    <div class="spin">🔄</div>
+    <div>Turn your phone sideways to play Tetris</div>
+  </div>
 
   <!-- Load the game files in order, smallest first, just like the Python
        imports at the top of tetris.py. tetris.js uses the others, so it

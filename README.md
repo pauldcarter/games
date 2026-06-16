@@ -48,6 +48,10 @@ published site). Keyboard controls:
 | ↑          | Rotate        |
 | Space      | Hard drop (slam to the bottom) |
 
+**On a phone:** turn it sideways (landscape) and an on-screen gamepad appears —
+a D-pad on the left and ROTATE / DROP buttons on the right, like a game
+controller. Held in portrait, it asks you to rotate the phone.
+
 ### Run the Python version on a computer
 
 Open a terminal in the `tetris/` folder and run:
