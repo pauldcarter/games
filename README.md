@@ -49,10 +49,10 @@ published site). Keyboard controls:
 | Space      | Hard drop (slam to the bottom) |
 
 **On a phone:** turn it sideways (landscape) and an on-screen gamepad appears —
-a D-pad on the left and ROTATE / DROP buttons on the right, like a game
-controller. Held in portrait, it asks you to rotate the phone. Tap the ⛶ button
-(top-right) to go fullscreen and hide the browser's address bar, where the phone
-supports it.
+move ◀ ▶ and soft-drop ▼ on the left, rotate ↺ ↻ and DROP on the right, like a
+game controller. Held in portrait, it asks you to rotate the phone. Tap the ⛶
+button (top-right) to go fullscreen and hide the browser's address bar, where
+the phone supports it.
 
 ### Run the Python version on a computer
 

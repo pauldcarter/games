@@ -76,11 +76,12 @@ function setupTouchControls() {
   // (left/right/down) is something you HOLD, so those buttons repeat while held;
   // rotate and hard-drop fire once per press, like the face buttons.
   const buttons = [
-    { id: "btn-left",   move: "left",   hold: true },
-    { id: "btn-right",  move: "right",  hold: true },
-    { id: "btn-down",   move: "down",   hold: true },
-    { id: "btn-rotate", move: "rotate", hold: false },
-    { id: "btn-drop",   move: "drop",   hold: false },
+    { id: "btn-left",       move: "left",        hold: true  },
+    { id: "btn-right",      move: "right",       hold: true  },
+    { id: "btn-down",       move: "down",        hold: true  },
+    { id: "btn-rotate-ccw", move: "rotate-ccw",  hold: false },
+    { id: "btn-rotate",     move: "rotate",      hold: false },
+    { id: "btn-drop",       move: "drop",        hold: false },
   ];
 
   for (const { id, move, hold } of buttons) {

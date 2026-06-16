@@ -100,18 +100,21 @@ def clear_full_rows(board):
     return cleared_count
 
 
-def rotate(piece):
+def rotate(piece, direction="cw"):
     """
-    Turn the piece 90 degrees clockwise and return the new grid.
+    Turn the piece 90 degrees and return the new grid. Pass "cw" to spin it
+    clockwise (the default) or "ccw" to spin it the other way.
 
-    How it works, in plain terms: the first column of the old piece becomes the
-    top row of the new one, the second column becomes the second row, and so on.
-    In Python, "zip(*piece)" pairs up the columns for us, and reversing each
-    result spins it clockwise rather than anticlockwise.
+    How it works, in plain terms: the columns of the old piece become the rows
+    of the new one. "zip(*piece)" pairs up the columns for us; reversing the
+    rows first (piece[::-1]) spins it clockwise, while reversing each new row
+    instead spins it anticlockwise.
 
     Note: this just calculates the rotated shape. Whoever calls rotate() should
     check_collision() afterwards and undo the rotation if it doesn't fit. That
     "try it, undo if it bumps something" idea is our simple stand-in for the
     fancy wall-kick systems real Tetris games use.
     """
+    if direction == "ccw":
+        return [list(row) for row in zip(*piece)][::-1]
     return [list(row) for row in zip(*piece[::-1])]

@@ -64,7 +64,9 @@
       -webkit-tap-highlight-color: transparent;
     }
     .btn:active { background: rgba(76, 194, 255, 0.4); }
-    .btn-wide { width: 112px; font-size: 1rem; }
+    /* The bottom button in each pad stretches across both top buttons, so each
+       pad is "two buttons on a row, one wide button below". */
+    .btn-wide { width: 158px; font-size: 1rem; }
 
     /* A little fullscreen toggle, tucked in the top-right corner. Tapping it
        makes the game take the whole screen (hiding the browser's URL bar) on
@@ -108,7 +110,9 @@
         padding: 8px;
         box-sizing: border-box;
       }
-      .pad { display: flex; }                /* reveal both thumb pads */
+      /* Reveal both thumb pads and give them the SAME fixed width so the board
+         sits dead-centre between them. */
+      .pad { display: flex; width: 180px; flex: 0 0 180px; }
       canvas { height: 100%; width: auto; }  /* board fills the height */
       #btn-fullscreen { display: flex; }     /* offer the fullscreen toggle */
     }
@@ -138,21 +142,25 @@
   <h1>Tetris</h1>
   <p class="hint">← → move &nbsp;·&nbsp; ↑ rotate &nbsp;·&nbsp; ↓ soft drop &nbsp;·&nbsp; Space hard drop</p>
 
-  <!-- LEFT thumb pad: directions (the "D-pad"). Direct body child so it sits to
-       the board's left when the landscape layout turns body into a row. -->
+  <!-- LEFT thumb pad: move left / right on top, soft-drop underneath. Direct
+       body child so it sits to the board's left in the landscape row layout. -->
   <div class="pad" id="pad-left">
     <div class="pad-row">
       <button class="btn" id="btn-left" aria-label="Move left">◀</button>
-      <button class="btn" id="btn-down" aria-label="Soft drop">▼</button>
       <button class="btn" id="btn-right" aria-label="Move right">▶</button>
     </div>
+    <button class="btn btn-wide" id="btn-down" aria-label="Soft drop">▼</button>
   </div>
 
   <canvas id="game"></canvas>
 
-  <!-- RIGHT thumb pad: actions (rotate + hard drop), like the PS3 face buttons. -->
+  <!-- RIGHT thumb pad: rotate anticlockwise / clockwise on top, hard drop
+       underneath -- mirroring the left pad so the two are balanced. -->
   <div class="pad" id="pad-right">
-    <button class="btn btn-wide" id="btn-rotate" aria-label="Rotate">ROTATE</button>
+    <div class="pad-row">
+      <button class="btn" id="btn-rotate-ccw" aria-label="Rotate left">↺</button>
+      <button class="btn" id="btn-rotate" aria-label="Rotate right">↻</button>
+    </div>
     <button class="btn btn-wide" id="btn-drop" aria-label="Hard drop">DROP</button>
   </div>
 

@@ -215,13 +215,14 @@ function main() {
         if (!checkCollision(board, piece, pieceX, pieceY + 1)) {
           pieceY += 1;
         }
-      } else if (move === "rotate") {
-        // Spin it. If the spun version doesn't fit where it is (for example
-        // it's flush against a wall and the rotation would poke through it),
-        // try nudging it a step or two sideways to make room -- this is the
-        // classic Tetris "wall kick". We try no nudge first, then left 1,
-        // right 1, left 2, right 2. If none fit, keep the old piece.
-        const rotated = rotate(piece);
+      } else if (move === "rotate" || move === "rotate-ccw") {
+        // Spin it -- clockwise for "rotate", anticlockwise for "rotate-ccw".
+        // If the spun version doesn't fit where it is (for example it's flush
+        // against a wall and the rotation would poke through it), try nudging
+        // it a step or two sideways to make room -- the classic Tetris "wall
+        // kick". We try no nudge first, then left 1, right 1, left 2, right 2.
+        // If none fit, keep the old piece.
+        const rotated = rotate(piece, move === "rotate-ccw" ? "ccw" : "cw");
         for (const kick of [0, -1, 1, -2, 2]) {
           if (!checkCollision(board, rotated, pieceX + kick, pieceY)) {
             piece = rotated;

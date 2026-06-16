@@ -124,21 +124,34 @@ function clearFullRows(board) {
 }
 
 
-function rotate(piece) {
-  // Turn the piece 90 degrees clockwise and return the new grid.
+function rotate(piece, direction) {
+  // Turn the piece 90 degrees and return the new grid. Pass "cw" to spin it
+  // clockwise (the default) or "ccw" to spin it the other way.
   //
-  // Python did this neatly with zip(*piece[::-1]). Here we do the same thing
-  // by hand: the new grid's rows come from the old grid's columns, read from
-  // the bottom row upward, which spins it clockwise.
+  // The new grid's rows come from the old grid's columns. Reading each column
+  // from the bottom row upward spins it clockwise; reading from the top down
+  // (and taking the columns right-to-left) spins it anticlockwise.
   const rows = piece.length;
   const cols = piece[0].length;
   const rotated = [];
-  for (let c = 0; c < cols; c++) {
-    const newRow = [];
-    for (let r = rows - 1; r >= 0; r--) {
-      newRow.push(piece[r][c]);
+
+  if (direction === "ccw") {
+    for (let c = cols - 1; c >= 0; c--) {
+      const newRow = [];
+      for (let r = 0; r < rows; r++) {
+        newRow.push(piece[r][c]);
+      }
+      rotated.push(newRow);
     }
-    rotated.push(newRow);
+  } else {
+    for (let c = 0; c < cols; c++) {
+      const newRow = [];
+      for (let r = rows - 1; r >= 0; r--) {
+        newRow.push(piece[r][c]);
+      }
+      rotated.push(newRow);
+    }
   }
+
   return rotated;
 }
