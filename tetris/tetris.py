@@ -1,0 +1,267 @@
+"""
+tetris.py  --  The main game. THIS is the file you run.
+
+    Run it with:   py tetris.py
+
+This file is the "heartbeat" of the game. It reads a bit like a table of
+contents: it borrows the pieces from shapes.py, the grid rules from board.py,
+and the controls from controls.py, then runs the loop that ties them together.
+
+The "game loop" at the bottom is the heart of nearly every video game. It just
+repeats this, about 60 times a second, forever:
+
+    1. See what the player pressed
+    2. Move things / update the game
+    3. Draw everything on screen
+    4. Repeat
+
+Read it top to bottom and you'll see the whole game.
+"""
+
+import asyncio
+import pygame
+import random
+
+import shapes
+import board as board_module
+import controls
+
+
+# =====================================================================
+# SETTINGS  --  the numbers you can tweak. Change them and re-run!
+# =====================================================================
+COLUMNS = 10            # how many cells wide the playing field is
+ROWS = 20               # how many cells tall it is
+CELL_SIZE = 30          # how big each cell is on screen, in pixels
+
+SIDEBAR_WIDTH = 150     # room on the right for the score text
+
+FALL_SPEED = 0.5        # seconds between each automatic step downward
+                        # (smaller = faster = harder. Try 0.2 for a challenge!)
+
+# Colours used for the screen itself (Red, Green, Blue).
+BLACK = (0, 0, 0)
+GREY = (40, 40, 40)
+WHITE = (255, 255, 255)
+
+# Work out the window size from the settings above.
+PLAY_WIDTH = COLUMNS * CELL_SIZE
+WINDOW_WIDTH = PLAY_WIDTH + SIDEBAR_WIDTH
+WINDOW_HEIGHT = ROWS * CELL_SIZE
+
+
+# =====================================================================
+# DRAWING  --  small helpers that put things on the screen.
+# =====================================================================
+
+def draw_cell(screen, col, row, colour):
+    """Draw one filled square at grid position (col, row)."""
+    x = col * CELL_SIZE
+    y = row * CELL_SIZE
+    rectangle = (x, y, CELL_SIZE, CELL_SIZE)
+    pygame.draw.rect(screen, colour, rectangle)
+    # A thin dark border makes the individual blocks easy to see.
+    pygame.draw.rect(screen, BLACK, rectangle, 2)
+
+
+def draw_board(screen, board):
+    """Draw every block that has already landed on the board."""
+    for row_index, row in enumerate(board):
+        for col_index, colour in enumerate(row):
+            if colour is not None:
+                draw_cell(screen, col_index, row_index, colour)
+
+
+def draw_piece(screen, piece, x, y, colour):
+    """Draw the piece the player is currently steering."""
+    for row_index, row in enumerate(piece):
+        for col_index, filled in enumerate(row):
+            if filled:
+                draw_cell(screen, x + col_index, y + row_index, colour)
+
+
+def draw_grid_lines(screen):
+    """Faint grid lines so you can judge where pieces will fall."""
+    for col in range(COLUMNS + 1):
+        pygame.draw.line(screen, GREY, (col * CELL_SIZE, 0),
+                         (col * CELL_SIZE, WINDOW_HEIGHT))
+    for row in range(ROWS + 1):
+        pygame.draw.line(screen, GREY, (0, row * CELL_SIZE),
+                         (PLAY_WIDTH, row * CELL_SIZE))
+
+
+def draw_text(screen, font, text, x, y):
+    """Write a line of text on the screen at pixel position (x, y)."""
+    image = font.render(text, True, WHITE)
+    screen.blit(image, (x, y))
+
+
+# =====================================================================
+# HELPERS for making and placing pieces.
+# =====================================================================
+
+def new_piece():
+    """
+    Pick a random shape and return everything we need to track it:
+    its grid, its colour, and a starting position near the top middle.
+    """
+    piece, colour = random.choice(shapes.SHAPES)
+    # Start it roughly centred along the top.
+    x = COLUMNS // 2 - len(piece[0]) // 2
+    y = 0
+    return piece, colour, x, y
+
+
+# =====================================================================
+# THE GAME LOOP  --  the heartbeat that ties everything together.
+# =====================================================================
+
+async def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    pygame.display.set_caption("Tetris")
+    clock = pygame.time.Clock()
+    font = pygame.font.SysFont("consolas", 24)
+
+    controller = controls.setup_controller()
+
+    # --- Set up a fresh game ---
+    board = board_module.make_empty_board(COLUMNS, ROWS)
+    piece, colour, piece_x, piece_y = new_piece()
+    score = 0
+    game_over = False
+
+    # A timer that counts up; when it passes FALL_SPEED, the piece steps down.
+    fall_timer = 0.0
+
+    # The left stick is something you HOLD, so we slow it down a little, otherwise
+    # the piece would zoom across the board too fast to control.
+    stick_timer = 0.0
+    STICK_REPEAT = 0.12  # seconds between stick-driven moves while held
+
+    running = True
+    while running:
+        # clock.tick(60) waits so the loop runs ~60 times a second, and tells us
+        # how many seconds passed since last time (we use that for the timers).
+        delta_seconds = clock.tick(60) / 1000.0
+
+        # ----- 1. SEE WHAT THE PLAYER PRESSED -----
+        events = pygame.event.get()
+        moves = controls.read_moves(events)
+
+        # The held left stick is checked separately, on its own little timer.
+        stick_timer += delta_seconds
+        if stick_timer >= STICK_REPEAT:
+            stick_direction = controls.read_left_stick(controller)
+            if stick_direction is not None:
+                moves.append(stick_direction)
+                stick_timer = 0.0
+
+        # ----- 2. UPDATE THE GAME based on those moves -----
+        for move in moves:
+            if move == "quit":
+                running = False
+
+            elif game_over:
+                # While the "Game Over" screen is up, the drop button restarts.
+                if move == "drop":
+                    board = board_module.make_empty_board(COLUMNS, ROWS)
+                    piece, colour, piece_x, piece_y = new_piece()
+                    score = 0
+                    game_over = False
+
+            elif move == "left":
+                # Try moving left; only keep it if nothing's in the way.
+                if not board_module.check_collision(board, piece, piece_x - 1, piece_y):
+                    piece_x -= 1
+
+            elif move == "right":
+                if not board_module.check_collision(board, piece, piece_x + 1, piece_y):
+                    piece_x += 1
+
+            elif move == "down":
+                # Soft drop: nudge it down one extra step if it fits.
+                if not board_module.check_collision(board, piece, piece_x, piece_y + 1):
+                    piece_y += 1
+
+            elif move == "rotate":
+                # Spin it; if the spun version doesn't fit, keep the old one.
+                rotated = board_module.rotate(piece)
+                if not board_module.check_collision(board, rotated, piece_x, piece_y):
+                    piece = rotated
+
+            elif move == "drop":
+                # Hard drop: fall straight down until something stops us.
+                while not board_module.check_collision(board, piece, piece_x, piece_y + 1):
+                    piece_y += 1
+
+        # ----- Gravity: make the piece fall on its own over time -----
+        if not game_over:
+            fall_timer += delta_seconds
+            if fall_timer >= FALL_SPEED:
+                fall_timer = 0.0
+                if not board_module.check_collision(board, piece, piece_x, piece_y + 1):
+                    piece_y += 1
+                else:
+                    # The piece can't fall any more -> lock it into the board.
+                    board_module.lock_piece(board, piece, piece_x, piece_y, colour)
+
+                    # Clear any full rows and score them. Clearing more rows at
+                    # once is worth more points (1->100, 2->300, 3->500, 4->800).
+                    cleared = board_module.clear_full_rows(board)
+                    points = {0: 0, 1: 100, 2: 300, 3: 500, 4: 800}
+                    score += points.get(cleared, 800)
+
+                    # Bring in the next piece.
+                    piece, colour, piece_x, piece_y = new_piece()
+
+                    # If the brand-new piece already overlaps something, the stack
+                    # has reached the top -- that's game over.
+                    if board_module.check_collision(board, piece, piece_x, piece_y):
+                        game_over = True
+
+        # ----- 3. DRAW EVERYTHING -----
+        screen.fill(BLACK)
+        draw_grid_lines(screen)
+        draw_board(screen, board)
+        if not game_over:
+            draw_piece(screen, piece, piece_x, piece_y, colour)
+
+        # Sidebar text on the right.
+        draw_text(screen, font, "SCORE", PLAY_WIDTH + 20, 20)
+        draw_text(screen, font, str(score), PLAY_WIDTH + 20, 50)
+
+        if game_over:
+            draw_text(screen, font, "GAME", PLAY_WIDTH + 20, 200)
+            draw_text(screen, font, "OVER", PLAY_WIDTH + 20, 230)
+            draw_text(screen, font, "drop =", PLAY_WIDTH + 20, 290)
+            draw_text(screen, font, "restart", PLAY_WIDTH + 20, 320)
+
+        # Show everything we just drew (pygame draws to a hidden page, then flips
+        # it onto the screen all at once so it looks smooth).
+        pygame.display.flip()
+
+        # Hand control back to the browser for a moment. In the browser the page
+        # would freeze if our loop never paused; this tiny pause keeps it alive.
+        # (On the desktop it does nothing noticeable -- it's harmless either way.)
+        await asyncio.sleep(0)
+
+    pygame.quit()
+
+
+# This line means: only run the game if THIS file was the one started.
+if __name__ == "__main__":
+    asyncio.run(main())
+
+
+# =====================================================================
+# THINGS TO TRY CHANGING / ADD NEXT  (great little learning projects!)
+# =====================================================================
+# - Change FALL_SPEED at the top to make the game faster or slower.
+# - Recolour the pieces by editing the colours in shapes.py.
+# - Make the board wider or taller with COLUMNS and ROWS.
+# - Speed the game up a little every time the score goes past, say, 1000.
+# - Add a "next piece" preview box in the sidebar.
+# - Add a faint "ghost" showing where the piece will land if you drop it.
+# - Add sound effects when a row clears (look up pygame.mixer).
+# =====================================================================

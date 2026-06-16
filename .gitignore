@@ -1,0 +1,10 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# pygbag local cache (the build/web output IS committed, but this cache is not)
+*/build/web-cache/
+
+# OS noise
+.DS_Store
+Thumbs.db
