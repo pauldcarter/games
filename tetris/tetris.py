@@ -184,10 +184,18 @@ def main():
                     piece_y += 1
 
             elif move == "rotate":
-                # Spin it; if the spun version doesn't fit, keep the old one.
+                # Spin it. If the spun version doesn't fit where it is (for
+                # example it's flush against a wall and the rotation would poke
+                # through it), try nudging it a step or two sideways to make
+                # room -- this is the classic Tetris "wall kick". We try no
+                # nudge first, then left 1, right 1, left 2, right 2. If none
+                # fit, keep the old piece.
                 rotated = board_module.rotate(piece)
-                if not board_module.check_collision(board, rotated, piece_x, piece_y):
-                    piece = rotated
+                for kick in (0, -1, 1, -2, 2):
+                    if not board_module.check_collision(board, rotated, piece_x + kick, piece_y):
+                        piece = rotated
+                        piece_x += kick
+                        break
 
             elif move == "drop":
                 # Hard drop: fall straight down until something stops us.
