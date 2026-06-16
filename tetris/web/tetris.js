@@ -28,8 +28,15 @@ const CELL_SIZE = 30;        // how big each cell is on screen, in pixels
 
 const SIDEBAR_WIDTH = 150;   // room on the right for the score text
 
-const FALL_SPEED = 0.5;      // seconds between each automatic step downward
-                             // (smaller = faster = harder. Try 0.2!)
+// The piece falls one step every so many seconds. It starts gentle and speeds
+// up a little as you play (see the difficulty ramp below), so the opening is
+// relaxed and it gets harder the longer you survive.
+const START_FALL_SPEED = 0.8;   // seconds between steps at the very start
+                                // (bigger = slower = easier. Try 1.0!)
+const SPEED_UP_EVERY = 20;      // after this many pieces land, speed up a bit
+const SPEED_UP_FACTOR = 0.9;    // each speed-up makes it 10% quicker (x0.9)
+const FASTEST_FALL_SPEED = 0.1; // never get quicker than this, however long
+                                // you last (smaller here = harder ceiling)
 
 // Colours used for the screen itself.
 const BLACK = "rgb(0, 0, 0)";
@@ -155,7 +162,12 @@ function main() {
   let score = 0;
   let gameOver = false;
 
-  // A timer that counts up; when it passes FALL_SPEED, the piece steps down.
+  // How fast pieces fall right now, and how many have landed so far. Every
+  // SPEED_UP_EVERY pieces we make fallSpeed a little smaller (quicker).
+  let fallSpeed = START_FALL_SPEED;
+  let piecesLocked = 0;
+
+  // A timer that counts up; when it passes fallSpeed, the piece steps down.
   let fallTimer = 0.0;
 
   // requestAnimationFrame gives us a timestamp in milliseconds. We keep the
@@ -184,6 +196,9 @@ function main() {
           pieceX = fresh.x; pieceY = fresh.y;
           score = 0;
           gameOver = false;
+          // Start a fresh game back at the gentle opening speed.
+          fallSpeed = START_FALL_SPEED;
+          piecesLocked = 0;
         }
       } else if (move === "left") {
         // Try moving left; only keep it if nothing's in the way.
@@ -224,7 +239,7 @@ function main() {
     // ----- Gravity: make the piece fall on its own over time -----
     if (!gameOver) {
       fallTimer += deltaSeconds;
-      if (fallTimer >= FALL_SPEED) {
+      if (fallTimer >= fallSpeed) {
         fallTimer = 0.0;
         if (!checkCollision(board, piece, pieceX, pieceY + 1)) {
           pieceY += 1;
@@ -237,6 +252,14 @@ function main() {
           const cleared = clearFullRows(board);
           const points = { 0: 0, 1: 100, 2: 300, 3: 500, 4: 800 };
           score += points[cleared] !== undefined ? points[cleared] : 800;
+
+          // Difficulty ramp: count this landed piece, and every
+          // SPEED_UP_EVERY pieces make the fall a little quicker (down to a
+          // floor so it never becomes impossible).
+          piecesLocked += 1;
+          if (piecesLocked % SPEED_UP_EVERY === 0) {
+            fallSpeed = Math.max(FASTEST_FALL_SPEED, fallSpeed * SPEED_UP_FACTOR);
+          }
 
           // Bring in the next piece.
           const fresh = newPiece();
