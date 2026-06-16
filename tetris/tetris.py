@@ -345,16 +345,3 @@ def main():
 # This line means: only run the game if THIS file was the one started.
 if __name__ == "__main__":
     main()
-
-
-# =====================================================================
-# THINGS TO TRY CHANGING / ADD NEXT  (great little learning projects!)
-# =====================================================================
-# - Change FALL_SPEED at the top to make the game faster or slower.
-# - Recolour the pieces by editing the colours in shapes.py.
-# - Make the board wider or taller with COLUMNS and ROWS.
-# - Speed the game up a little every time the score goes past, say, 1000.
-# - Add a "next piece" preview box in the sidebar.
-# - Add a faint "ghost" showing where the piece will land if you drop it.
-# - Add sound effects when a row clears (look up pygame.mixer).
-# =====================================================================
