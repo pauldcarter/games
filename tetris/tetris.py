@@ -18,7 +18,6 @@ repeats this, about 60 times a second, forever:
 Read it top to bottom and you'll see the whole game.
 """
 
-import asyncio
 import pygame
 import random
 
@@ -116,7 +115,7 @@ def new_piece():
 # THE GAME LOOP  --  the heartbeat that ties everything together.
 # =====================================================================
 
-async def main():
+def main():
     pygame.init()
     screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("Tetris")
@@ -241,17 +240,12 @@ async def main():
         # it onto the screen all at once so it looks smooth).
         pygame.display.flip()
 
-        # Hand control back to the browser for a moment. In the browser the page
-        # would freeze if our loop never paused; this tiny pause keeps it alive.
-        # (On the desktop it does nothing noticeable -- it's harmless either way.)
-        await asyncio.sleep(0)
-
     pygame.quit()
 
 
 # This line means: only run the game if THIS file was the one started.
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
 
 
 # =====================================================================

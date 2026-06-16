@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tetris</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #11131a;
+      color: #f0f2f8;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 { margin: 1rem 0 0.25rem; letter-spacing: 0.05em; }
+    .hint { color: #9aa0b4; font-size: 0.9rem; margin: 0 0 1rem; }
+    a.back { color: #4cc2ff; text-decoration: none; margin-top: 1rem; }
+    canvas {
+      background: #000;
+      border: 1px solid #2c3142;
+      border-radius: 8px;
+      /* Crisp blocks, no blurry scaling. */
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tetris</h1>
+  <p class="hint">← → move &nbsp;·&nbsp; ↑ rotate &nbsp;·&nbsp; ↓ soft drop &nbsp;·&nbsp; Space hard drop</p>
+
+  <canvas id="game"></canvas>
+
+  <a class="back" href="../../index.html">← Back to games</a>
+
+  <!-- Load the game files in order, smallest first, just like the Python
+       imports at the top of tetris.py. tetris.js uses the others, so it
+       comes last. -->
+  <script src="shapes.js"></script>
+  <script src="board.js"></script>
+  <script src="controls.js"></script>
+  <script src="tetris.js"></script>
+</body>
+</html>
