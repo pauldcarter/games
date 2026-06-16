@@ -50,6 +50,7 @@ GREY = (40, 40, 40)
 WHITE = (255, 255, 255)
 PLAY_BG = (30, 30, 36)   # the playfield's grey background, so the play area
                          # stands apart from the score sidebar
+GHOST = (120, 120, 130)  # the "ghost" outline showing where a piece will land
 
 # Work out the window size from the settings above.
 PLAY_WIDTH = COLUMNS * CELL_SIZE
@@ -103,6 +104,49 @@ def draw_text(screen, font, text, x, y):
     screen.blit(image, (x, y))
 
 
+def drop_y(board, piece, x, y):
+    """
+    Work out how far down a piece would fall from (x, y) before it lands.
+
+    We step it down one row at a time until the next step would collide, and
+    return that resting row. Used for both the "ghost" and the hard drop.
+    """
+    while not board_module.check_collision(board, piece, x, y + 1):
+        y += 1
+    return y
+
+
+def draw_ghost(screen, board, piece, x, y):
+    """
+    Draw a faint outline where the current piece will land if you drop it, so
+    you can see where it's going. Same shape, just a thin border with no fill.
+    """
+    landing_y = drop_y(board, piece, x, y)
+    for row_index, row in enumerate(piece):
+        for col_index, filled in enumerate(row):
+            if filled:
+                px = (x + col_index) * CELL_SIZE
+                py = (landing_y + row_index) * CELL_SIZE
+                rectangle = (px + 1, py + 1, CELL_SIZE - 2, CELL_SIZE - 2)
+                pygame.draw.rect(screen, GHOST, rectangle, 2)
+
+
+def draw_mini_piece(screen, piece, colour, x, y):
+    """
+    Draw a small version of a piece in the sidebar (used for the "next" box).
+    x, y are the top-left pixel position; cells are a bit smaller than the
+    board's so a 4-wide piece fits the sidebar neatly.
+    """
+    mini = 20
+    for row_index, row in enumerate(piece):
+        for col_index, filled in enumerate(row):
+            if filled:
+                px = x + col_index * mini
+                py = y + row_index * mini
+                pygame.draw.rect(screen, colour, (px, py, mini, mini))
+                pygame.draw.rect(screen, BLACK, (px, py, mini, mini), 2)
+
+
 # =====================================================================
 # HELPERS for making and placing pieces.
 # =====================================================================
@@ -135,6 +179,9 @@ def main():
     # --- Set up a fresh game ---
     board = board_module.make_empty_board(COLUMNS, ROWS)
     piece, colour, piece_x, piece_y = new_piece()
+    # The piece waiting after the current one -- shown in the "NEXT" box so you
+    # can plan ahead.
+    next_piece = new_piece()
     score = 0
     game_over = False
 
@@ -179,6 +226,7 @@ def main():
                 if move == "drop":
                     board = board_module.make_empty_board(COLUMNS, ROWS)
                     piece, colour, piece_x, piece_y = new_piece()
+                    next_piece = new_piece()
                     score = 0
                     game_over = False
                     # Start a fresh game back at the gentle opening speed.
@@ -242,8 +290,10 @@ def main():
                     if pieces_locked % SPEED_UP_EVERY == 0:
                         fall_speed = max(FASTEST_FALL_SPEED, fall_speed * SPEED_UP_FACTOR)
 
-                    # Bring in the next piece.
-                    piece, colour, piece_x, piece_y = new_piece()
+                    # Bring in the piece that was waiting in "NEXT", then roll a
+                    # fresh one to wait behind it.
+                    piece, colour, piece_x, piece_y = next_piece
+                    next_piece = new_piece()
 
                     # If the brand-new piece already overlaps something, the stack
                     # has reached the top -- that's game over.
@@ -258,6 +308,9 @@ def main():
         draw_grid_lines(screen)
         draw_board(screen, board)
         if not game_over:
+            # Draw the faint "ghost" first (where the piece will land), then the
+            # real piece on top of it.
+            draw_ghost(screen, board, piece, piece_x, piece_y)
             draw_piece(screen, piece, piece_x, piece_y, colour)
 
         # Sidebar text on the right.
@@ -271,11 +324,16 @@ def main():
         draw_text(screen, font, "LEVEL", PLAY_WIDTH + 20, 100)
         draw_text(screen, font, str(level), PLAY_WIDTH + 20, 130)
 
+        # The "NEXT" box: a little preview of the piece coming up.
+        next_grid, next_colour, _, _ = next_piece
+        draw_text(screen, font, "NEXT", PLAY_WIDTH + 20, 180)
+        draw_mini_piece(screen, next_grid, next_colour, PLAY_WIDTH + 20, 215)
+
         if game_over:
-            draw_text(screen, font, "GAME", PLAY_WIDTH + 20, 200)
-            draw_text(screen, font, "OVER", PLAY_WIDTH + 20, 230)
-            draw_text(screen, font, "drop =", PLAY_WIDTH + 20, 290)
-            draw_text(screen, font, "restart", PLAY_WIDTH + 20, 320)
+            draw_text(screen, font, "GAME", PLAY_WIDTH + 20, 360)
+            draw_text(screen, font, "OVER", PLAY_WIDTH + 20, 390)
+            draw_text(screen, font, "drop =", PLAY_WIDTH + 20, 450)
+            draw_text(screen, font, "restart", PLAY_WIDTH + 20, 480)
 
         # Show everything we just drew (pygame draws to a hidden page, then flips
         # it onto the screen all at once so it looks smooth).
