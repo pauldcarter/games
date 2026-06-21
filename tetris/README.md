@@ -39,6 +39,12 @@ works too, but it isn't required.)
 files, so Pages serves it directly. The leaderboard still works because the
 scores live in Google's Sheet, not on a server you'd have to host.
 
+> **After you edit any `web/*.js` file, bump the cache-buster.** Browsers (and
+> Pages) cache the old scripts, so a change can look like it "did nothing" until
+> a hard-refresh. In `web/index.html` the `<script>` tags end in `?v=2` — change
+> every one to the next number (`?v=3`, etc.) when you push JS changes, and
+> visitors get the fresh files automatically without needing to hard-refresh.
+
 ## Leaderboard setup (one-time)
 
 The leaderboard is stored in a Google Sheet via a small Google Apps Script. You

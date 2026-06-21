@@ -264,11 +264,18 @@
 
   <!-- Load the game files in order, smallest first, just like the Python
        imports at the top of tetris.py. tetris.js uses the others, so it
-       comes last. -->
-  <script src="shapes.js"></script>
-  <script src="board.js"></script>
-  <script src="controls.js"></script>
-  <script src="scores.js"></script>
-  <script src="tetris.js"></script>
+       comes last.
+
+       The "?v=" on each file is a CACHE-BUSTER. Browsers (and GitHub Pages)
+       hang on to old copies of scripts to load faster, which is why a change
+       can seem to "do nothing" until you hard-refresh. Changing the version
+       number makes the browser see a new address and fetch a fresh copy.
+       SO: whenever you edit any of these files, bump this number (v=2 -> v=3).
+       Keep them all the same number so it's easy to remember. -->
+  <script src="shapes.js?v=2"></script>
+  <script src="board.js?v=2"></script>
+  <script src="controls.js?v=2"></script>
+  <script src="scores.js?v=2"></script>
+  <script src="tetris.js?v=2"></script>
 </body>
 </html>
