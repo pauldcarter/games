@@ -96,6 +96,47 @@
     /* Shown only on a phone held in portrait (set up by the media query). */
     #rotate-hint { display: none; }
 
+    /* ---- The login screen ----
+       A full-page panel shown before the game starts, where the player types
+       their name. JS hides it (sets display:none) once they press Play. */
+    #login {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: #2a2f3d;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      text-align: center;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+    #login h2 { margin: 0; letter-spacing: 0.08em; color: #6cd0ff; font-size: 2.4rem; }
+    #login p { margin: 0; color: #c2c7d6; }
+    #login input {
+      font-size: 1.4rem;
+      padding: 0.5rem 0.75rem;
+      width: min(280px, 80vw);
+      text-align: center;
+      border: 2px solid #4cc2ff;
+      border-radius: 8px;
+      background: #000;
+      color: #f0f2f8;
+      outline: none;
+    }
+    #login button {
+      font-size: 1.2rem;
+      padding: 0.5rem 1.5rem;
+      border: 2px solid #4cc2ff;
+      border-radius: 8px;
+      background: rgba(76, 194, 255, 0.15);
+      color: #f0f2f8;
+      cursor: pointer;
+    }
+    #login button:active { background: rgba(76, 194, 255, 0.4); }
+
     /* On a touch phone in LANDSCAPE: lay the page out as one row,
        [ D-pad ] [ board ] [ actions ], sized to the screen height. */
     @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
@@ -149,6 +190,16 @@
   </style>
 </head>
 <body>
+  <!-- The login screen: shown first, hidden by JS once the player presses Play.
+       Their name is used on the shared leaderboard. -->
+  <div id="login">
+    <h2>TETRIS</h2>
+    <p>Type your name to start:</p>
+    <input id="login-name" type="text" maxlength="12" placeholder="Your name"
+           autocomplete="off" autofocus>
+    <button id="login-go">Play</button>
+  </div>
+
   <h1>Tetris</h1>
   <p class="hint">← → move &nbsp;·&nbsp; ↑ rotate &nbsp;·&nbsp; ↓ soft drop &nbsp;·&nbsp; Space hard drop</p>
 
@@ -217,6 +268,7 @@
   <script src="shapes.js"></script>
   <script src="board.js"></script>
   <script src="controls.js"></script>
+  <script src="scores.js"></script>
   <script src="tetris.js"></script>
 </body>
 </html>

@@ -44,6 +44,7 @@ const GREY = "rgb(40, 40, 40)";
 const WHITE = "rgb(255, 255, 255)";
 const PLAY_BG = "rgb(30, 30, 36)";   // the playfield's grey background, so the
                                      // play area stands apart from the sidebar
+const ACCENT = "rgb(108, 208, 255)"; // bright blue, to highlight YOUR row
 
 // Work out the window size from the settings above.
 const PLAY_WIDTH = COLUMNS * CELL_SIZE;
@@ -174,6 +175,31 @@ function drawMiniPiece(ctx, piece, colour, x, y) {
 }
 
 
+function drawLeaderboard(ctx, leaderboard, playerName, x, y) {
+  // Draw the list of top scores down the sidebar, starting at (x, y). The
+  // current player's most recent entry is drawn in the accent colour so they
+  // can spot themselves (just the first matching row, in case a name repeats).
+  ctx.font = "18px consolas, monospace";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = WHITE;
+  ctx.fillText("BEST", x, y);
+
+  let highlighted = false;
+  leaderboard.slice(0, 8).forEach((entry, index) => {
+    const rowY = y + 30 + index * 26;
+    const name = entry.name.slice(0, 7).padEnd(7);
+    const line = `${index + 1}.${name} ${entry.score}`;
+    if (!highlighted && entry.name === playerName) {
+      ctx.fillStyle = ACCENT;
+      highlighted = true;
+    } else {
+      ctx.fillStyle = WHITE;
+    }
+    ctx.fillText(line, x, rowY);
+  });
+}
+
+
 // =====================================================================
 // HELPERS for making and placing pieces.
 // =====================================================================
@@ -195,7 +221,7 @@ function newPiece() {
 // THE GAME LOOP  --  the heartbeat that ties everything together.
 // =====================================================================
 
-function main() {
+function main(playerName) {
   const canvas = document.getElementById("game");
   canvas.width = WINDOW_WIDTH;
   canvas.height = WINDOW_HEIGHT;
@@ -216,6 +242,12 @@ function main() {
   let next = newPiece();
   let score = 0;
   let gameOver = false;
+
+  // The leaderboard, fetched from the server. We refresh it whenever a game
+  // ends (after sending our own score) and show it on the Game Over screen.
+  // scoreSubmitted stops us sending the SAME game's score more than once.
+  let leaderboard = [];
+  let scoreSubmitted = false;
 
   // How fast pieces fall right now, and how many have landed so far. Every
   // SPEED_UP_EVERY pieces we make fallSpeed a little smaller (quicker).
@@ -255,6 +287,8 @@ function main() {
           // Start a fresh game back at the gentle opening speed.
           fallSpeed = START_FALL_SPEED;
           piecesLocked = 0;
+          // Let the next game's score be sent when it ends.
+          scoreSubmitted = false;
         }
       } else if (move === "left") {
         // Try moving left; only keep it if nothing's in the way.
@@ -328,6 +362,16 @@ function main() {
           // reached the top -- that's game over.
           if (checkCollision(board, piece, pieceX, pieceY)) {
             gameOver = true;
+            // Send this score to the shared leaderboard (just once). It's async,
+            // so when the server replies we stash the updated board in
+            // `leaderboard`; the draw code below picks it up on a later frame.
+            // If the server's down, submitScore quietly returns [].
+            if (!scoreSubmitted) {
+              scoreSubmitted = true;
+              submitScore(playerName, score).then((updated) => {
+                leaderboard = updated;
+              });
+            }
           }
         }
       }
@@ -361,15 +405,20 @@ function main() {
     drawText(ctx, "LEVEL", PLAY_WIDTH + 20, 100);
     drawText(ctx, String(level), PLAY_WIDTH + 20, 130);
 
-    // The "NEXT" box: a little preview of the piece coming up.
-    drawText(ctx, "NEXT", PLAY_WIDTH + 20, 180);
-    drawMiniPiece(ctx, next.piece, next.colour, PLAY_WIDTH + 20, 215);
-
     if (gameOver) {
-      drawText(ctx, "GAME", PLAY_WIDTH + 20, 360);
-      drawText(ctx, "OVER", PLAY_WIDTH + 20, 390);
-      drawText(ctx, "drop =", PLAY_WIDTH + 20, 450);
-      drawText(ctx, "restart", PLAY_WIDTH + 20, 480);
+      // On the Game Over screen the "NEXT" box makes no sense, so we use that
+      // space for the leaderboard instead.
+      drawText(ctx, "GAME", PLAY_WIDTH + 20, 175);
+      ctx.fillStyle = ACCENT;
+      ctx.fillText("OVER", PLAY_WIDTH + 20, 200);
+      drawLeaderboard(ctx, leaderboard, playerName, PLAY_WIDTH + 20, 245);
+      ctx.fillStyle = WHITE;
+      ctx.font = "18px consolas, monospace";
+      ctx.fillText("drop = restart", PLAY_WIDTH + 20, 470);
+    } else {
+      // The "NEXT" box: a little preview of the piece coming up.
+      drawText(ctx, "NEXT", PLAY_WIDTH + 20, 180);
+      drawMiniPiece(ctx, next.piece, next.colour, PLAY_WIDTH + 20, 215);
     }
 
     // Ask the browser to call us again for the next frame.
@@ -381,5 +430,27 @@ function main() {
 }
 
 
-// Start the game once the page has loaded.
-window.addEventListener("load", main);
+// Wait for the login screen before starting. The player types their name and
+// presses Play (or Enter); we hide the login panel and start the game, passing
+// the name along so their scores land on the shared leaderboard.
+window.addEventListener("load", () => {
+  const login = document.getElementById("login");
+  const input = document.getElementById("login-name");
+  const goButton = document.getElementById("login-go");
+
+  function start() {
+    // Blank name falls back to "Anon", trimmed and capped to 12 chars.
+    const name = (input.value || "").trim().slice(0, 12) || "Anon";
+    login.style.display = "none";
+    main(name);
+  }
+
+  goButton.addEventListener("click", start);
+  // Enter in the name box also starts the game.
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      start();
+    }
+  });
+  input.focus();
+});
