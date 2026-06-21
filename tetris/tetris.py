@@ -169,18 +169,50 @@ def new_piece():
 # LOGIN  --  ask the player to type their name before we start.
 # =====================================================================
 
-def ask_for_name(screen, clock, font):
+def draw_login_leaderboard(screen, font, leaderboard, highlight_name, x, y):
     """
-    Show a simple "type your name" screen and return the name they typed.
+    Draw the "Top Scores" list on the login screen, starting at (x, y).
 
-    This runs its own little loop -- much like the game loop -- but all it does
-    is collect letters. The player types, sees their name appear with a blinking
-    cursor, and presses Enter to begin. Returns the finished name (or "Anon" if
-    they just press Enter without typing anything).
-
-    Returns None if they close the window instead, so main() can quit cleanly.
+    This is the full leaderboard, shown before a game and again after each one.
+    The row matching highlight_name (the player who just finished) is lit up in
+    the accent colour so they can spot themselves -- just the first match, in
+    case a name appears twice.
     """
-    name = ""
+    draw_text(screen, font, "TOP SCORES", x, y, GHOST)
+
+    if not leaderboard:
+        draw_text(screen, font, "No scores yet -- be the first!", x, y + 30, GHOST)
+        return
+
+    highlighted = False
+    for index, entry in enumerate(leaderboard[:8]):
+        row_y = y + 32 + index * 26
+        # Left-align rank + name, right-align the score against a fixed column.
+        left = f"{index + 1}. {entry['name'][:12]}"
+        points = str(entry["score"])
+        if not highlighted and entry["name"] == highlight_name:
+            colour = ACCENT
+            highlighted = True
+        else:
+            colour = WHITE
+        draw_text(screen, font, left, x, row_y, colour)
+        # Right-edge the score so the numbers line up in a neat column.
+        points_image = font.render(points, True, colour)
+        screen.blit(points_image, (x + 300 - points_image.get_width(), row_y))
+
+
+def show_login(screen, clock, font, leaderboard, default_name, highlight_name):
+    """
+    Show the login / scores screen and return the name the player chose.
+
+    This is home base between games: a title, a name box (pre-filled with the
+    last name used), the Top Scores list, and "press Enter to play". It runs its
+    own little loop collecting letters until the player presses Enter.
+
+    Returns the finished name (blank becomes "Anon"), or None if they close the
+    window, so main() can quit cleanly.
+    """
+    name = default_name or ""
     big_font = pygame.font.SysFont("consolas", 36)
     cursor_on = True          # the blinking "|" after the name
     cursor_timer = 0.0
@@ -211,62 +243,33 @@ def ask_for_name(screen, clock, font):
 
         # ----- Draw the login screen -----
         screen.fill(PLAY_BG)
-        draw_text(screen, big_font, "TETRIS", 60, 80, ACCENT)
-        draw_text(screen, font, "Type your name,", 60, 170)
-        draw_text(screen, font, "then press Enter:", 60, 200)
+        draw_text(screen, big_font, "TETRIS", 60, 30, ACCENT)
+        draw_text(screen, font, "Your name (Enter to play):", 60, 95)
 
         # The name box, with a blinking cursor so it's clear you can type.
         shown = name + ("|" if cursor_on else " ")
-        pygame.draw.rect(screen, BLACK, (60, 250, WINDOW_WIDTH - 120, 50))
-        pygame.draw.rect(screen, ACCENT, (60, 250, WINDOW_WIDTH - 120, 50), 2)
-        draw_text(screen, big_font, shown, 72, 256)
+        pygame.draw.rect(screen, BLACK, (60, 125, WINDOW_WIDTH - 120, 50))
+        pygame.draw.rect(screen, ACCENT, (60, 125, WINDOW_WIDTH - 120, 50), 2)
+        draw_text(screen, big_font, shown, 72, 131)
+
+        # The Top Scores list underneath.
+        draw_login_leaderboard(screen, font, leaderboard, highlight_name, 60, 210)
 
         pygame.display.flip()
-
-
-def draw_leaderboard(screen, font, leaderboard, player_name, x, y):
-    """
-    Draw the list of top scores down the sidebar, starting at (x, y).
-
-    The current player's most recent entry is drawn in the accent colour so they
-    can spot themselves. We only highlight the FIRST matching row, so if a name
-    appears twice we don't light up both.
-    """
-    draw_text(screen, font, "BEST", x, y)
-    highlighted = False
-    for index, entry in enumerate(leaderboard[:8]):
-        row_y = y + 30 + index * 26
-        line = f"{index + 1}.{entry['name'][:7]:<7} {entry['score']}"
-        # Light up this player's row (just once).
-        if not highlighted and entry["name"] == player_name:
-            colour = ACCENT
-            highlighted = True
-        else:
-            colour = WHITE
-        draw_text(screen, font, line, x, row_y, colour)
 
 
 # =====================================================================
 # THE GAME LOOP  --  the heartbeat that ties everything together.
 # =====================================================================
 
-def main():
-    pygame.init()
-    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-    pygame.display.set_caption("Tetris")
-    clock = pygame.time.Clock()
-    font = pygame.font.SysFont("consolas", 24)
-    small_font = pygame.font.SysFont("consolas", 18)
+def play_game(screen, clock, font, controller, player_name):
+    """
+    Play one game from a fresh board until it ends, then return the final score.
 
-    # Ask who's playing before anything else. If they close the window here, the
-    # function hands back None and we quit without starting a game.
-    player_name = ask_for_name(screen, clock, font)
-    if player_name is None:
-        pygame.quit()
-        return
-
-    controller = controls.setup_controller()
-
+    Returns the score (an int) on a normal game over, or None if the player
+    closed the window mid-game so main() can quit cleanly. After this returns,
+    main() submits the score and shows the login / scores screen again.
+    """
     # --- Set up a fresh game ---
     board = board_module.make_empty_board(COLUMNS, ROWS)
     piece, colour, piece_x, piece_y = new_piece()
@@ -275,12 +278,9 @@ def main():
     next_piece = new_piece()
     score = 0
     game_over = False
-
-    # The leaderboard, fetched from the server. We refresh it whenever a game
-    # ends (after sending our own score), and show it on the Game Over screen.
-    # score_submitted stops us sending the SAME game's score more than once.
-    leaderboard = []
-    score_submitted = False
+    # Once the game ends we keep showing the final frame briefly so the player
+    # sees GAME OVER, then return. This counts that pause down.
+    end_timer = 0.0
 
     # How fast pieces fall right now, and how many have landed so far. Every
     # SPEED_UP_EVERY pieces we make fall_speed a little smaller (quicker).
@@ -295,8 +295,7 @@ def main():
     stick_timer = 0.0
     STICK_REPEAT = 0.12  # seconds between stick-driven moves while held
 
-    running = True
-    while running:
+    while True:
         # clock.tick(60) waits so the loop runs ~60 times a second, and tells us
         # how many seconds passed since last time (we use that for the timers).
         delta_seconds = clock.tick(60) / 1000.0
@@ -316,21 +315,10 @@ def main():
         # ----- 2. UPDATE THE GAME based on those moves -----
         for move in moves:
             if move == "quit":
-                running = False
+                return None     # window closed -> tell main() to quit
 
             elif game_over:
-                # While the "Game Over" screen is up, the drop button restarts.
-                if move == "drop":
-                    board = board_module.make_empty_board(COLUMNS, ROWS)
-                    piece, colour, piece_x, piece_y = new_piece()
-                    next_piece = new_piece()
-                    score = 0
-                    game_over = False
-                    # Start a fresh game back at the gentle opening speed.
-                    fall_speed = START_FALL_SPEED
-                    pieces_locked = 0
-                    # Let the next game's score be sent when it ends.
-                    score_submitted = False
+                pass            # ignore input on the brief Game Over pause
 
             elif move == "left":
                 # Try moving left; only keep it if nothing's in the way.
@@ -398,12 +386,6 @@ def main():
                     # has reached the top -- that's game over.
                     if board_module.check_collision(board, piece, piece_x, piece_y):
                         game_over = True
-                        # Send this score to the shared leaderboard (just once)
-                        # and grab the updated board to show on the Game Over
-                        # screen. If the server's down, this quietly does nothing.
-                        if not score_submitted:
-                            leaderboard = scores_module.submit_score(player_name, score)
-                            score_submitted = True
 
         # ----- 3. DRAW EVERYTHING -----
         # Fill everything black (the sidebar's colour), then paint the play
@@ -430,14 +412,10 @@ def main():
         draw_text(screen, font, str(level), PLAY_WIDTH + 20, 130)
 
         if game_over:
-            # On the Game Over screen the "NEXT" box makes no sense, so we use
-            # that space for the leaderboard instead.
+            # A short summary in the sidebar. The full leaderboard lives on the
+            # login screen, which main() brings back once this returns.
             draw_text(screen, font, "GAME", PLAY_WIDTH + 20, 175)
             draw_text(screen, font, "OVER", PLAY_WIDTH + 20, 200, ACCENT)
-            draw_leaderboard(screen, small_font, leaderboard, player_name,
-                             PLAY_WIDTH + 20, 245)
-            draw_text(screen, small_font, "drop = restart",
-                      PLAY_WIDTH + 20, 470)
         else:
             # The "NEXT" box: a little preview of the piece coming up.
             next_grid, next_colour, _, _ = next_piece
@@ -447,6 +425,51 @@ def main():
         # Show everything we just drew (pygame draws to a hidden page, then flips
         # it onto the screen all at once so it looks smooth).
         pygame.display.flip()
+
+        # Hold the Game Over frame for a moment so the player reads it, then end
+        # the game by returning the score. main() takes it from here.
+        if game_over:
+            end_timer += delta_seconds
+            if end_timer >= 1.2:
+                return score
+
+
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
+    pygame.display.set_caption("Tetris")
+    clock = pygame.time.Clock()
+    font = pygame.font.SysFont("consolas", 24)
+
+    controller = controls.setup_controller()
+
+    # The leaderboard, fetched from the server, and the name to highlight in it
+    # (the player who just finished a game). We start by fetching the board so
+    # the very first login screen already shows the Top Scores.
+    leaderboard = scores_module.get_top_scores()
+    highlight_name = None
+    last_name = ""
+
+    # Home-base loop: show the login / scores screen, play one game, send the
+    # score, refresh the board, and come back here. Closing the window at either
+    # the login screen or mid-game drops us out and quits.
+    while True:
+        player_name = show_login(screen, clock, font, leaderboard,
+                                 last_name, highlight_name)
+        if player_name is None:
+            break
+
+        last_name = player_name     # remember it to pre-fill next time
+        score = play_game(screen, clock, font, controller, player_name)
+        if score is None:
+            break
+
+        # Send the score to the shared leaderboard and grab the refreshed board
+        # (with this game's entry) to show on the login screen next time round.
+        # If the server's down, submit_score returns [], so fall back to a fetch.
+        leaderboard = scores_module.submit_score(player_name, score) \
+            or scores_module.get_top_scores()
+        highlight_name = player_name
 
     pygame.quit()
 

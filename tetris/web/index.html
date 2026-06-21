@@ -137,6 +137,48 @@
     }
     #login button:active { background: rgba(76, 194, 255, 0.4); }
 
+    /* ---- The Top Scores list on the login screen ---- */
+    #leaderboard {
+      width: min(320px, 86vw);
+      margin-top: 0.5rem;
+    }
+    #leaderboard h3 {
+      margin: 0 0 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: #8a93a8;
+      text-transform: uppercase;
+    }
+    #leaderboard ol {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    #leaderboard li {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    /* Zebra striping so rows are easy to read. */
+    #leaderboard li:nth-child(odd) { background: rgba(255, 255, 255, 0.04); }
+    /* The current player's most recent row, lit up so they spot themselves. */
+    #leaderboard li.you {
+      background: rgba(76, 194, 255, 0.18);
+      color: #6cd0ff;
+      font-weight: 600;
+    }
+    #leaderboard .rank { color: #8a93a8; width: 1.5rem; text-align: right; }
+    #leaderboard li.you .rank { color: #6cd0ff; }
+    #leaderboard .who { flex: 1; text-align: left; padding-left: 0.6rem;
+                        overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #leaderboard .pts { text-align: right; }
+    #leaderboard .empty { color: #8a93a8; font-size: 0.9rem; padding: 0.3rem 0.6rem; }
+
     /* On a touch phone in LANDSCAPE: lay the page out as one row,
        [ D-pad ] [ board ] [ actions ], sized to the screen height. */
     @media (hover: none) and (pointer: coarse) and (orientation: landscape) {
@@ -198,6 +240,14 @@
     <input id="login-name" type="text" maxlength="12" placeholder="Your name"
            autocomplete="off" autofocus>
     <button id="login-go">Play</button>
+
+    <!-- The shared Top Scores. Filled in by JS (renderLeaderboard in tetris.js)
+         each time this screen is shown, so it always reflects the latest board,
+         including a score you just set. -->
+    <div id="leaderboard">
+      <h3>Top Scores</h3>
+      <ol id="leaderboard-list"></ol>
+    </div>
   </div>
 
   <h1>Tetris</h1>
@@ -272,10 +322,10 @@
        number makes the browser see a new address and fetch a fresh copy.
        SO: whenever you edit any of these files, bump this number (v=2 -> v=3).
        Keep them all the same number so it's easy to remember. -->
-  <script src="shapes.js?v=2"></script>
-  <script src="board.js?v=2"></script>
-  <script src="controls.js?v=2"></script>
-  <script src="scores.js?v=2"></script>
-  <script src="tetris.js?v=2"></script>
+  <script src="shapes.js?v=3"></script>
+  <script src="board.js?v=3"></script>
+  <script src="controls.js?v=3"></script>
+  <script src="scores.js?v=3"></script>
+  <script src="tetris.js?v=3"></script>
 </body>
 </html>

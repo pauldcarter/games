@@ -175,31 +175,6 @@ function drawMiniPiece(ctx, piece, colour, x, y) {
 }
 
 
-function drawLeaderboard(ctx, leaderboard, playerName, x, y) {
-  // Draw the list of top scores down the sidebar, starting at (x, y). The
-  // current player's most recent entry is drawn in the accent colour so they
-  // can spot themselves (just the first matching row, in case a name repeats).
-  ctx.font = "18px consolas, monospace";
-  ctx.textBaseline = "top";
-  ctx.fillStyle = WHITE;
-  ctx.fillText("BEST", x, y);
-
-  let highlighted = false;
-  leaderboard.slice(0, 8).forEach((entry, index) => {
-    const rowY = y + 30 + index * 26;
-    const name = entry.name.slice(0, 7).padEnd(7);
-    const line = `${index + 1}.${name} ${entry.score}`;
-    if (!highlighted && entry.name === playerName) {
-      ctx.fillStyle = ACCENT;
-      highlighted = true;
-    } else {
-      ctx.fillStyle = WHITE;
-    }
-    ctx.fillText(line, x, rowY);
-  });
-}
-
-
 // =====================================================================
 // HELPERS for making and placing pieces.
 // =====================================================================
@@ -243,12 +218,6 @@ function main(playerName) {
   let score = 0;
   let gameOver = false;
 
-  // The leaderboard, fetched from the server. We refresh it whenever a game
-  // ends (after sending our own score) and show it on the Game Over screen.
-  // scoreSubmitted stops us sending the SAME game's score more than once.
-  let leaderboard = [];
-  let scoreSubmitted = false;
-
   // How fast pieces fall right now, and how many have landed so far. Every
   // SPEED_UP_EVERY pieces we make fallSpeed a little smaller (quicker).
   let fallSpeed = START_FALL_SPEED;
@@ -273,24 +242,10 @@ function main(playerName) {
     const moves = takeMoves();
 
     // ----- 2. UPDATE THE GAME based on those moves -----
+    // (Once the game is over we stop the loop entirely and hand back to the
+    // login / scores screen, so there's no "game over" branch to handle here.)
     for (const move of moves) {
-      if (gameOver) {
-        // While the "Game Over" screen is up, the drop key restarts.
-        if (move === "drop") {
-          board = makeEmptyBoard(COLUMNS, ROWS);
-          const fresh = newPiece();
-          piece = fresh.piece; colour = fresh.colour;
-          pieceX = fresh.x; pieceY = fresh.y;
-          next = newPiece();
-          score = 0;
-          gameOver = false;
-          // Start a fresh game back at the gentle opening speed.
-          fallSpeed = START_FALL_SPEED;
-          piecesLocked = 0;
-          // Let the next game's score be sent when it ends.
-          scoreSubmitted = false;
-        }
-      } else if (move === "left") {
+      if (move === "left") {
         // Try moving left; only keep it if nothing's in the way.
         if (!checkCollision(board, piece, pieceX - 1, pieceY)) {
           pieceX -= 1;
@@ -362,16 +317,13 @@ function main(playerName) {
           // reached the top -- that's game over.
           if (checkCollision(board, piece, pieceX, pieceY)) {
             gameOver = true;
-            // Send this score to the shared leaderboard (just once). It's async,
-            // so when the server replies we stash the updated board in
-            // `leaderboard`; the draw code below picks it up on a later frame.
-            // If the server's down, submitScore quietly returns [].
-            if (!scoreSubmitted) {
-              scoreSubmitted = true;
-              submitScore(playerName, score).then((updated) => {
-                leaderboard = updated;
-              });
-            }
+            // Send this score to the shared leaderboard, then bring the player
+            // back to the login / scores screen with the refreshed board (their
+            // new entry included). If the server's down submitScore returns [],
+            // and we let showLogin fall back to a fresh fetch instead.
+            submitScore(playerName, score).then((updated) => {
+              showLogin(playerName, updated.length ? updated : undefined);
+            });
           }
         }
       }
@@ -406,23 +358,25 @@ function main(playerName) {
     drawText(ctx, String(level), PLAY_WIDTH + 20, 130);
 
     if (gameOver) {
-      // On the Game Over screen the "NEXT" box makes no sense, so we use that
-      // space for the leaderboard instead.
+      // A short summary in the sidebar. The full leaderboard lives on the login
+      // screen, which we hand back to just below.
       drawText(ctx, "GAME", PLAY_WIDTH + 20, 175);
       ctx.fillStyle = ACCENT;
       ctx.fillText("OVER", PLAY_WIDTH + 20, 200);
-      drawLeaderboard(ctx, leaderboard, playerName, PLAY_WIDTH + 20, 245);
-      ctx.fillStyle = WHITE;
-      ctx.font = "18px consolas, monospace";
-      ctx.fillText("drop = restart", PLAY_WIDTH + 20, 470);
+      drawText(ctx, "Score", PLAY_WIDTH + 20, 250);
+      drawText(ctx, String(score), PLAY_WIDTH + 20, 280);
     } else {
       // The "NEXT" box: a little preview of the piece coming up.
       drawText(ctx, "NEXT", PLAY_WIDTH + 20, 180);
       drawMiniPiece(ctx, next.piece, next.colour, PLAY_WIDTH + 20, 215);
     }
 
-    // Ask the browser to call us again for the next frame.
-    requestAnimationFrame(frame);
+    // Keep the loop going only while the game is live. Once it's over we paint
+    // this final frame and stop; the game-over handler above has already kicked
+    // off the return to the login / scores screen.
+    if (!gameOver) {
+      requestAnimationFrame(frame);
+    }
   }
 
   // Kick off the loop.
@@ -430,27 +384,103 @@ function main(playerName) {
 }
 
 
-// Wait for the login screen before starting. The player types their name and
-// presses Play (or Enter); we hide the login panel and start the game, passing
-// the name along so their scores land on the shared leaderboard.
-window.addEventListener("load", () => {
+// =====================================================================
+// THE LOGIN / SCORES SCREEN  --  shown before a game and after each one.
+// =====================================================================
+// This is the home base between games: it has the name box, the Play button,
+// and the shared Top Scores list. main() runs a single game; when it ends it
+// brings this screen back, with the scores refreshed (including the one just
+// set) and the name remembered.
+
+// Remember the last name typed, so it's pre-filled next time. This lives in the
+// browser (localStorage), separate from the shared leaderboard.
+const NAME_KEY = "tetris-player-name";
+
+
+function renderLeaderboard(scores, highlightName) {
+  // Paint the Top Scores list on the login screen from the array the server
+  // gave us. highlightName (the current player) gets their first matching row
+  // lit up so they can spot themselves.
+  const list = document.getElementById("leaderboard-list");
+  list.innerHTML = "";
+
+  if (!scores || scores.length === 0) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = "No scores yet -- be the first!";
+    list.appendChild(li);
+    return;
+  }
+
+  let highlighted = false;
+  scores.forEach((entry, index) => {
+    const li = document.createElement("li");
+    if (!highlighted && entry.name === highlightName) {
+      li.className = "you";
+      highlighted = true;
+    }
+    // Build the row: rank, name, points. textContent (not innerHTML) keeps any
+    // odd characters in a name from being treated as markup.
+    const rank = document.createElement("span");
+    rank.className = "rank";
+    rank.textContent = index + 1;
+    const who = document.createElement("span");
+    who.className = "who";
+    who.textContent = entry.name;
+    const pts = document.createElement("span");
+    pts.className = "pts";
+    pts.textContent = entry.score;
+    li.append(rank, who, pts);
+    list.appendChild(li);
+  });
+}
+
+
+async function showLogin(highlightName, knownScores) {
+  // Show the login / scores screen, refresh the Top Scores list, and wait for
+  // the player to press Play -- then start a fresh game with their name.
+  //
+  // knownScores lets the caller pass in a board it already has (e.g. the fresh
+  // one submitScore handed back right after a game), so we don't re-fetch and
+  // flicker. If it's not given, we ask the server ourselves.
   const login = document.getElementById("login");
   const input = document.getElementById("login-name");
   const goButton = document.getElementById("login-go");
 
+  // Pre-fill the name: the one we want to highlight (just played), else the
+  // remembered one from last visit.
+  input.value = highlightName || localStorage.getItem(NAME_KEY) || "";
+
+  // Use the scores we were handed, or fetch them. While fetching, show the
+  // previous/empty list rather than nothing.
+  const scores = knownScores !== undefined ? knownScores : await getTopScores();
+  renderLeaderboard(scores, highlightName);
+
+  login.style.display = "flex";
+  input.focus();
+  input.select();
+
   function start() {
     // Blank name falls back to "Anon", trimmed and capped to 12 chars.
     const name = (input.value || "").trim().slice(0, 12) || "Anon";
+    localStorage.setItem(NAME_KEY, name);   // remember for next time
+    // Stop listening so old handlers don't pile up across games.
+    goButton.removeEventListener("click", start);
+    input.removeEventListener("keydown", onKey);
     login.style.display = "none";
     main(name);
   }
 
-  goButton.addEventListener("click", start);
-  // Enter in the name box also starts the game.
-  input.addEventListener("keydown", (event) => {
+  function onKey(event) {
     if (event.key === "Enter") {
       start();
     }
-  });
-  input.focus();
-});
+  }
+
+  goButton.addEventListener("click", start);
+  input.addEventListener("keydown", onKey);
+}
+
+
+// Show the login screen as soon as the page is ready.
+window.addEventListener("load", () => showLogin());
