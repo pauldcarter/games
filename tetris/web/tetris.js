@@ -358,13 +358,11 @@ function main(playerName) {
     drawText(ctx, String(level), PLAY_WIDTH + 20, 130);
 
     if (gameOver) {
-      // A short summary in the sidebar. The full leaderboard lives on the login
-      // screen, which we hand back to just below.
+      // Just GAME OVER in the sidebar -- the score is already shown up top, and
+      // the full leaderboard lives on the login screen we hand back to below.
       drawText(ctx, "GAME", PLAY_WIDTH + 20, 175);
       ctx.fillStyle = ACCENT;
       ctx.fillText("OVER", PLAY_WIDTH + 20, 200);
-      drawText(ctx, "Score", PLAY_WIDTH + 20, 250);
-      drawText(ctx, String(score), PLAY_WIDTH + 20, 280);
     } else {
       // The "NEXT" box: a little preview of the piece coming up.
       drawText(ctx, "NEXT", PLAY_WIDTH + 20, 180);
